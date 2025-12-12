@@ -35,9 +35,9 @@ $$
 P(A) = cA
 $$
 
-for some clearance rate \(c\). This is a simplification, as different classes of drug may be processed at different rates [reference 2.1.1](https://www.merckmanuals.com/professional/clinical-pharmacology/pharmacokinetics/drug-metabolism). Additionally, this does not take into account that drugs may be processed at different rates throughout the day, depending on the stage of the patient’s circadian rythym, other drugs in the body, stomach contents, etc. [reference 2.1.2](https://pmc.ncbi.nlm.nih.gov/articles/PMC7174881/).  
+for some clearance rate \(0 < c < 1\) (since it is impossible to remove more drug from the body than there currently is at that time). This is a simplification, as it does not take into account that drugs may be processed at different rates throughout the day, depending on the stage of the patient’s circadian rythym, other drugs in the body, stomach contents, etc. [reference 2.1.1](https://pmc.ncbi.nlm.nih.gov/articles/PMC7174881/).  
 
-The dosage at time \(t\), \(D(t)\), will be modelled differently for the IV administration and the extended-release pill delivery strategies. For IV, the dosage at time \(t\) is a constant \(r\), the rate of administration. In clinical settings, IV infusions are generally done at a constant rate, so this assumption is valid [reference x](https://www.ncbi.nlm.nih.gov/books/NBK596734/). This results in the model
+The dosage at time \(t\), \(D(t)\), will be modelled differently for the IV administration and the extended-release pill delivery strategies. For IV, the dosage at time \(t\) is a constant \(r\), the rate of administration. In clinical settings, IV infusions are generally done at a constant rate, so this assumption is valid [reference 2.1.2](https://www.ncbi.nlm.nih.gov/books/NBK596734/). This results in the model
 
 $$
 \frac{dA}{dt} = r - cA \qquad \text{for } 0 \le t \le h
@@ -61,9 +61,157 @@ $$
 \frac{dA}{dt} = D_{\max} e^{-t/h} - cA
 $$
 
-However, this model ignores that the drug isn’t immediately effective once consumed; it first has to be absorbed the by stomach lining into the bloodstream, a process whose speed is affected by the stomach contents, genetics, and current state of the patient [reference 2.1.2], again(https://pmc.ncbi.nlm.nih.gov/articles/PMC7174881/). Furthemore, this doesn’t take into account that not all of the drug will be absorbed by the patient. This is called the bioavailability of a drug, and varies wildly between different compounds [reference 2.1.3](https://www.ncbi.nlm.nih.gov/books/NBK557852/). Once again, since our model is agnostic to the drug being administered, we simplify by assuming that rate of dosage and rate of absorption are equal, and that no time passes between the release/absorption of the drug and it becoming effective (i.e. acting upon it’s target). 
+However, this model ignores that the drug isn’t immediately effective once consumed; it first has to be absorbed the by stomach lining into the bloodstream, a process whose speed is affected by the stomach contents, genetics, and current state of the patient [reference 2.1.1, again](https://pmc.ncbi.nlm.nih.gov/articles/PMC7174881/). Furthemore, this doesn’t take into account that not all of the drug will be absorbed by the patient. This is called the bioavailability of a drug, and varies wildly between different compounds [reference 2.1.3](https://www.ncbi.nlm.nih.gov/books/NBK557852/). Once again, since our model is agnostic to the drug being administered, we simplify by assuming that rate of dosage and rate of absorption are equal, and that no time passes between the release/absorption of the drug and it becoming effective (i.e. acting upon it’s target). 
 
 Note that, for the IV model, our assumption that the drug entering the bloodstream is equivalent to it becoming effective is somewhat supported by the medical literature, as intravenous drug administration is generally considered to provide the most complete drug availability, with minimal delay. [reference 2.1.4](https://www.sciencedirect.com/topics/medicine-and-dentistry/intravenous-drug-administration).  
+
+# Analysis of Base Model
+
+We wish to find the amount of drug at any particular time \(t\), based on our model for IV administration, in order to determine time to effective dose, maximum amount of drug in the body, and equilibrium amount of drug in the bodu. Recall, from the previous section, that we model change in \(A(t)\), the amount of drug at time \(t\), as
+
+$$
+\frac{dA}{dt} = r - cA \qquad \text{for } 0 \le t \le h
+$$
+
+and after infusion ends,
+
+$$
+\frac{dA}{dt} = -cA
+$$
+
+where \(r > 0\), \(0 < c < 1\), and \(t=h)\ being the time we stop administration. As this is a linear, autonomous, first-oder ODE, we can solve for \(A(t)\), \( t \in [0, h] \), as follows:
+
+We start with
+
+$$
+\frac{dA}{dt} = r - cA
+$$
+
+Rewrite and separate variables:
+
+$$
+\frac{1}{\,r - cA\,}\, dA = 1 \, dt
+$$
+
+Integrate both sides:
+
+$$
+\int \frac{1}{\,r - cA\,} \, dA = \int 1 \, dt
+$$
+
+Performing the integrations:
+
+$$
+-\frac{1}{c} \ln\!\left( r - cA \right) = t + C
+$$
+
+Multiply by \(-c\) and absorb constants:
+
+$$
+\ln\!\left( r - cA \right) = -ct + C'
+$$
+
+Exponentiate both sides:
+
+$$
+r - cA = D e^{-ct}
+$$
+
+Solve for \(A(t)\):
+
+$$
+A(t) = \frac{r - D e^{-ct}}{c}
+$$
+
+Since \(A(0) >= 0\) and \(D e^{-ct} > 0\), with \(D e^{-ct}\) being a monotone decreasing function of t, we know that \(r >= D e^{-c*0} = D\). To find a general solution to our model, note that
+
+$$A_0 = A(0) = \frac{r - D}{c}.$$
+
+Hence, we have that,
+
+$$D = r - cA_0.$$
+
+$$\Rightarrow A(t) = \frac{r - (r - cA_0)e^{-ct}}{c}.$$
+
+$$= \frac{r - re^{-ct} + cA_0 e^{-ct}}{c}.$$
+
+$$= \frac{r - re^{-ct}}{c} + A_0 e^{-ct}.$$
+
+$$= \frac{r}{c}(1 - e^{-ct}) + A_0 e^{-ct}.$$
+
+Observe that for \(A_0 = 0\) (i.e. no drug in patient’s system when administration begins)
+
+$$A(t) = \frac{r}{c}(1 - e^{-ct}).$$
+
+Now, to find the solution for \(A(t)\) after administration ceases, that is on \((h, \infty)\), i.e.
+
+$$\frac{dA}{dt} = -cA.$$
+
+$$\Rightarrow \int \frac{1}{A} \, dA = \int -c \, dt.$$
+
+$$\Rightarrow \ln(A) = -ct + C.$$
+
+$$\Rightarrow A(t) = e^{-ct + C} = Me^{-ct}.$$
+
+To solve for \(M\), observe that \(A(t)\) should be a continuous function, since we are modelling a continuous process.  
+That is,
+
+$$\frac{r}{c}(1 - e^{-ch}) + A_0 e^{-ch} = Me^{-ch}.$$
+
+$$\Rightarrow M = \frac{r}{c}(e^{ch} - 1) + A_0.$$
+
+Hence, on \([h, \infty)\)
+
+$$A(t) = \left(\frac{r}{c}(e^{ch} - 1) + A_0\right)e^{-ct}.$$
+
+$$= \frac{r}{c}(e^{c(h - t)} - e^{-ct}) + A_0 e^{-ct}.$$
+
+Therefore, our final solution for \(A(t)\) is:
+
+$$
+A(t) =
+\begin{cases}
+\frac{r}{c}(1 - e^{-ct}) + A_0 e^{-ct}, & (0 \le t \le h), \\
+\frac{r}{c}(e^{c(h - t)} - e^{-ct}) + A_0 e^{-ct}, & (t \ge h).
+\end{cases}
+$$
+
+Now that we have an expression for total amount of drug at any time \(t\), we can turn our attention to finding the equilibrium of the model.  
+Fortunately, this is a much simpler endeavor, as we simply set the rate of change, \(\frac{dA}{dt}\), to 0, and solve.
+
+For \(t \in [0, h]\):
+
+$$\frac{dA}{dt} = 0 = r - cA.$$
+
+$$\Rightarrow A = \frac{r}{c}.$$
+
+Hence, the equilibrium of \(A(t)\) during IV administration is \(A(t) = \frac{r}{c}\).  
+Is this equilibrium stable? Letting
+
+$$F(A) = \frac{dA}{dt} = r - cA,$$
+
+then
+
+$$F'(A) = -c,$$
+
+where \(c\) is a positive constant, hence \(F'(A) < 0\) for all time \(t\).  
+Thus our equilibrium \(E_1\) is stable for all time.  
+We can therefore conclude that so long as administration continues, we will eventually reach and settle at an equilibrium amount of \(r/c\) units of drug in the body.
+
+Similarly, on \(t > h\), we have
+
+$$\frac{dA}{dt} = 0 = -cA.$$
+
+$$\Rightarrow A = 0.$$
+
+Since \(c > 0\), thus our equilibrium is 0, as expected, since the drug is eventually eliminated from the body.  
+Allowing \(g(A) = -cA\), then
+
+$$g'(A) = -c < 0.$$
+
+So, as before, this equilibrium is stable and we can expect to reach it once administration stops, given sufficient time.
+
+
 
 
 
