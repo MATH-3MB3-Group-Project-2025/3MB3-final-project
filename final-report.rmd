@@ -4,7 +4,6 @@ author: "Sofian Khan, Muhammad Khan, Stephem Zanette, Faris Abuain"
 date: "2025-12-12"
 output: pdf_document
 ---
-
 ## Introduction
 
 A 2021 report by the Government of Canada’s Pain Task Force found that 1 in 5 Canadians live with some form of chronic pain. This includes 1 in 5 children and youth, as well as 1 in 3 adults over the age of 65 [reference 1](https://www.canada.ca/en/health-canada/corporate/about-health-canada/public-engagement/external-advisory-bodies/canadian-pain-task-force/report-2021.html). Chronic pain often results in a significantly lower quality of life, including (but not limited to) poor sleep, impacted ability to socialize, and inability to work. In addition to chronic pain, acute pain (defined as pain requiring immediate medical attention) is a common occurence in Canada, accounting for 78% of all emergency department visits [reference 2](https://ououd.casn.ca/modules/module-7/topic-7a.html). As a result, the treatment strategies and methods for the management of pain is a topic of great importance for both medical professionals and policy makers in the Canadian healthcare system. 
@@ -79,7 +78,9 @@ $$
 \frac{dA}{dt} = -cA
 $$
 
-where \(r > 0\), \(0 < c < 1\), and \(t=h)\ being the time we stop administration. As this is a linear, autonomous, first-oder ODE, we can solve for \(A(t)\), \( t \in [0, h] \), as follows:
+where \( r > 0 \), \( 0 < c < 1 \), and \( t = h \) is the time at which administration stops.  
+Since this is a linear, autonomous, first-order ODE, we can solve for \( A(t) \) on the interval \( t \in [0, h] \) as follows:
+
 
 We start with
 
@@ -210,6 +211,7 @@ Allowing \(g(A) = -cA\), then
 $$g'(A) = -c < 0.$$
 
 So, as before, this equilibrium is stable and we can expect to reach it once administration stops, given sufficient time.
+
 
 # Pill Model
 
