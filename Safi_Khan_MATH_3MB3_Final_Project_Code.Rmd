@@ -1,0 +1,595 @@
+---
+title: "MATH_3MB3_Final_Project_Code"
+author: "Safi Khan, 400402095"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    latex_engine: xelatex
+  html_document:
+    df_print: paged
+header-includes:
+- "\\usepackage{fvextra}    % <-- provides breaklines"
+- \RecustomVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,commandchars=\\\{\}}
+- \fvset{fontsize=\footnotesize}       % smaller code font (fits more per line)
+- \setlength{\emergencystretch}{3em}   % reduce overfull warnings in paragraphs
+knitr:
+  opts_chunk:
+    tidy: false
+---
+
+ Research Question: Under which parameters and values of Aeff will we have slower but long-term effective dose versus quick but short-term effective dose?
+
+```{r}
+# =============================================================================
+# PART 1: DEFINE FUNCTIONS FOR SOLVING MODELS
+# =============================================================================
+
+# Function to solve IV model analytically
+# This function computes A(t) for the IV delivery method
+# Inputs:
+#   t_vec: vector of time values
+#   r: infusion rate (mg/hr)
+#   h: administration duration (hours)
+#   c: clearance rate (1/hr)
+# Output:
+#   A: vector of drug amounts at each time point
+solve_IV <- function(t_vec, r, h, c) {
+  # Create empty vector to store results
+  A <- rep(NA, length(t_vec))
+  
+  # Loop through each time point
+  for(i in 1:length(t_vec)) {
+    t <- t_vec[i]
+    
+    if(t <= h) {
+      # During administration: A(t) = (r/c)(1 - e^(-ct))
+      A[i] <- (r/c) * (1 - exp(-c * t))
+    } else {
+      # After administration: A(t) = A(h) * e^(-c(t-h))
+      A_h <- (r/c) * (1 - exp(-c * h))
+      A[i] <- A_h * exp(-c * (t - h))
+    }
+  }
+  
+  return(A)
+}
+
+# Function to solve Pill model numerically using Euler's method
+# Inputs:
+#   t_vec: vector of time values
+#   D_max: maximum release rate (mg/hr)
+#   h: time constant for exponential decay (hours)
+#   c: clearance rate (1/hr)
+# Output:
+#   A: vector of drug amounts at each time point
+solve_Pill <- function(t_vec, D_max, h, c) {
+  # Create empty vector and set initial condition
+  A <- rep(NA, length(t_vec))
+  A[1] <- 0  # Start with no drug in body
+  
+  # Calculate time step
+  dt <- t_vec[2] - t_vec[1]
+  
+  # Use Euler's method to approximate solution
+  for(i in 2:length(t_vec)) {
+    t <- t_vec[i]
+    # Dosing rate at time t
+    D_t <- D_max * exp(-t/h)
+    # Euler's method: A_next = A_current + (dA/dt) * dt
+    dA <- (D_t - c * A[i-1]) * dt
+    A[i] <- A[i-1] + dA
+  }
+  
+  return(A)
+}
+
+# Function to calculate onset time and duration
+# This function finds when A(t) first exceeds Aeff and how long it stays above
+# Inputs:
+#   t_vec: vector of time values
+#   A_vec: vector of drug amounts
+#   A_eff: effective threshold (mg)
+# Output:
+#   list containing onset time, duration, peak time, and peak value
+calculate_metrics <- function(t_vec, A_vec, A_eff) {
+  # Find all time points where A(t) > Aeff
+  above_threshold <- which(A_vec > A_eff)
+  
+  # Check if drug ever reaches effective level
+  if(length(above_threshold) == 0) {
+    return(list(onset = NA, 
+                duration = 0, 
+                peak_time = t_vec[which.max(A_vec)],
+                peak_value = max(A_vec)))
+  }
+  
+  # Calculate onset time and duration
+  onset <- t_vec[min(above_threshold)]
+  t_end <- t_vec[max(above_threshold)]
+  duration <- t_end - onset
+  
+  return(list(onset = onset, 
+              duration = duration,
+              peak_time = t_vec[which.max(A_vec)],
+              peak_value = max(A_vec)))
+}
+
+```
+
+```{r}
+# =============================================================================
+# PART 2: SETUP BASE PARAMETERS AND TIME VECTOR
+# =============================================================================
+
+# Base parameters for simulations
+c <- 0.1        # clearance rate (1/hour)
+h <- 4          # administration duration (hours)
+r <- 50         # IV infusion rate (mg/hour)
+D_max <- 200    # pill maximum release rate (mg/hour)
+A_eff <- 80     # effective threshold (mg)
+A_safe <- 250   # safety threshold (mg)
+
+# Create time vector from 0 to 24 hours with small step size
+t_all <- seq(0, 24, 0.01)
+
+```
+
+```{r}
+# =============================================================================
+# PART 3: RESEARCH QUESTION - EFFECT OF EFFECTIVE THRESHOLD (Aeff)
+# =============================================================================
+
+cat("="*80, "\n")
+cat("RESEARCH QUESTION: How does Aeff affect onset-duration trade-off?\n")
+cat("="*80, "\n\n")
+
+# Choose range of Aeff values to test
+A_eff_values <- seq(20, 200, by=10)
+
+# Create data frame to store results
+results_Aeff <- data.frame(
+  A_eff = A_eff_values,
+  IV_onset = rep(NA, length(A_eff_values)),
+  IV_duration = rep(NA, length(A_eff_values)),
+  Pill_onset = rep(NA, length(A_eff_values)),
+  Pill_duration = rep(NA, length(A_eff_values)),
+  onset_ratio = rep(NA, length(A_eff_values)),
+  duration_ratio = rep(NA, length(A_eff_values))
+)
+
+# Solve both models once with base parameters
+A_IV <- solve_IV(t_all, r, h, c)
+A_pill <- solve_Pill(t_all, D_max, h, c)
+
+# Loop through each Aeff value and calculate metrics
+for(i in 1:length(A_eff_values)) {
+  A_eff_current <- A_eff_values[i]
+  
+  # Calculate metrics for IV
+  metrics_IV <- calculate_metrics(t_all, A_IV, A_eff_current)
+  results_Aeff$IV_onset[i] <- metrics_IV$onset
+  results_Aeff$IV_duration[i] <- metrics_IV$duration
+  
+  # Calculate metrics for Pill
+  metrics_pill <- calculate_metrics(t_all, A_pill, A_eff_current)
+  results_Aeff$Pill_onset[i] <- metrics_pill$onset
+  results_Aeff$Pill_duration[i] <- metrics_pill$duration
+  
+  # Calculate ratios (Pill/IV)
+  results_Aeff$onset_ratio[i] <- metrics_pill$onset / metrics_IV$onset
+  results_Aeff$duration_ratio[i] <- metrics_pill$duration / metrics_IV$duration
+}
+
+# Print results
+cat("RESULTS: Effect of Aeff on Performance Trade-offs\n\n")
+print(results_Aeff)
+
+# Find where Pill has duration advantage
+cat("\n\nKEY FINDINGS:\n")
+cat("Range where Pill has longer duration:\n")
+pill_advantage <- results_Aeff[results_Aeff$duration_ratio > 1, ]
+if(nrow(pill_advantage) > 0) {
+  cat("  Aeff range:", min(pill_advantage$A_eff), "to", 
+      max(pill_advantage$A_eff), "mg\n")
+} else {
+  cat("  No advantage found in tested range\n")
+}
+
+```
+
+```{r}
+# =============================================================================
+# PART 4: EFFECT OF INFUSION RATE (r) FOR IV
+# =============================================================================
+
+cat("\n", "="*80, "\n")
+cat("PARAMETER ANALYSIS: Effect of Infusion Rate (r)\n")
+cat("="*80, "\n\n")
+
+# Choose range of r values to test
+r_values <- seq(20, 100, by=10)
+A_eff_fixed <- 80  # Use fixed Aeff for this analysis
+
+# Create data frame to store results
+results_r <- data.frame(
+  r = r_values,
+  IV_onset = rep(NA, length(r_values)),
+  IV_duration = rep(NA, length(r_values)),
+  IV_peak = rep(NA, length(r_values))
+)
+
+# Loop through each r value
+for(i in 1:length(r_values)) {
+  # Solve IV model with current r value
+  A_IV_temp <- solve_IV(t_all, r_values[i], h, c)
+  
+  # Calculate metrics
+  metrics <- calculate_metrics(t_all, A_IV_temp, A_eff_fixed)
+  results_r$IV_onset[i] <- metrics$onset
+  results_r$IV_duration[i] <- metrics$duration
+  results_r$IV_peak[i] <- metrics$peak_value
+}
+
+cat("Effect of IV Infusion Rate (r) on Performance:\n")
+cat("(h=4, c=0.1, Aeff=80)\n\n")
+print(results_r)
+
+```
+
+```{r}
+# =============================================================================
+# PART 5: EFFECT OF ADMINISTRATION DURATION (h)
+# =============================================================================
+
+cat("\n", "="*80, "\n")
+cat("PARAMETER ANALYSIS: Effect of Administration Duration (h)\n")
+cat("="*80, "\n\n")
+
+# Choose range of h values to test
+h_values <- seq(2, 10, by=1)
+
+# Create data frame to store results
+results_h <- data.frame(
+  h = h_values,
+  IV_onset = rep(NA, length(h_values)),
+  IV_duration = rep(NA, length(h_values)),
+  Pill_onset = rep(NA, length(h_values)),
+  Pill_duration = rep(NA, length(h_values)),
+  onset_diff = rep(NA, length(h_values)),
+  duration_diff = rep(NA, length(h_values))
+)
+
+# Loop through each h value
+for(i in 1:length(h_values)) {
+  h_temp <- h_values[i]
+  
+  # Solve both models with current h value
+  A_IV_temp <- solve_IV(t_all, r, h_temp, c)
+  A_pill_temp <- solve_Pill(t_all, D_max, h_temp, c)
+  
+  # Calculate metrics for IV
+  metrics_IV <- calculate_metrics(t_all, A_IV_temp, A_eff_fixed)
+  results_h$IV_onset[i] <- metrics_IV$onset
+  results_h$IV_duration[i] <- metrics_IV$duration
+  
+  # Calculate metrics for Pill
+  metrics_pill <- calculate_metrics(t_all, A_pill_temp, A_eff_fixed)
+  results_h$Pill_onset[i] <- metrics_pill$onset
+  results_h$Pill_duration[i] <- metrics_pill$duration
+  
+  # Calculate differences
+  results_h$onset_diff[i] <- metrics_pill$onset - metrics_IV$onset
+  results_h$duration_diff[i] <- metrics_pill$duration - metrics_IV$duration
+}
+
+cat("Effect of Administration Duration (h):\n")
+cat("(r=50, Dmax=200, c=0.1, Aeff=80)\n\n")
+print(results_h)
+
+```
+
+```{r}
+# =============================================================================
+# PART 6: EFFECT OF CLEARANCE RATE (c)
+# =============================================================================
+
+cat("\n", "="*80, "\n")
+cat("PARAMETER ANALYSIS: Effect of Clearance Rate (c)\n")
+cat("="*80, "\n\n")
+
+# Choose range of c values to test
+c_values <- seq(0.05, 0.25, by=0.025)
+
+# Create data frame to store results
+results_c <- data.frame(
+  c = c_values,
+  IV_onset = rep(NA, length(c_values)),
+  IV_duration = rep(NA, length(c_values)),
+  Pill_onset = rep(NA, length(c_values)),
+  Pill_duration = rep(NA, length(c_values))
+)
+
+# Loop through each c value
+for(i in 1:length(c_values)) {
+  c_temp <- c_values[i]
+  
+  # Solve both models with current c value
+  A_IV_temp <- solve_IV(t_all, r, h, c_temp)
+  A_pill_temp <- solve_Pill(t_all, D_max, h, c_temp)
+  
+  # Calculate metrics for IV
+  metrics_IV <- calculate_metrics(t_all, A_IV_temp, A_eff_fixed)
+  results_c$IV_onset[i] <- metrics_IV$onset
+  results_c$IV_duration[i] <- metrics_IV$duration
+  
+  # Calculate metrics for Pill
+  metrics_pill <- calculate_metrics(t_all, A_pill_temp, A_eff_fixed)
+  results_c$Pill_onset[i] <- metrics_pill$onset
+  results_c$Pill_duration[i] <- metrics_pill$duration
+}
+
+cat("Effect of Clearance Rate (c):\n")
+cat("(r=50, Dmax=200, h=4, Aeff=80)\n\n")
+print(results_c)
+
+```
+
+```{r}
+# =============================================================================
+# PART 7: VISUALIZATION - EFFECT OF Aeff
+# =============================================================================
+
+# Create PDF file for Aeff analysis plots
+pdf("Aeff_analysis.pdf", width=12, height=8)
+
+# Setup 2x2 plotting area
+par(mfrow=c(2,2), mar=c(5,5,4,2))
+
+# Plot 1: Onset times vs Aeff
+plot(results_Aeff$A_eff, results_Aeff$IV_onset, 
+     type='l', col='blue', lwd=3,
+     xlab='Effective Threshold Aeff (mg)', 
+     ylab='Onset Time (hours)',
+     main='Onset Time vs Effective Threshold',
+     ylim=c(0, max(c(results_Aeff$IV_onset, results_Aeff$Pill_onset), na.rm=TRUE)),
+     cex.lab=1.3, cex.axis=1.2, cex.main=1.4)
+lines(results_Aeff$A_eff, results_Aeff$Pill_onset, col='red', lwd=3)
+legend('topleft', c('IV', 'Pill'), col=c('blue', 'red'), lty=1, lwd=3)
+grid()
+
+# Plot 2: Duration vs Aeff
+plot(results_Aeff$A_eff, results_Aeff$IV_duration, 
+     type='l', col='blue', lwd=3,
+     xlab='Effective Threshold Aeff (mg)', 
+     ylab='Effective Duration (hours)',
+     main='Duration vs Effective Threshold',
+     ylim=c(0, max(c(results_Aeff$IV_duration, results_Aeff$Pill_duration), na.rm=TRUE)),
+     cex.lab=1.3, cex.axis=1.2, cex.main=1.4)
+lines(results_Aeff$A_eff, results_Aeff$Pill_duration, col='red', lwd=3)
+legend('topright', c('IV', 'Pill'), col=c('blue', 'red'), lty=1, lwd=3)
+grid()
+
+# Plot 3: Onset Ratio (Pill/IV)
+plot(results_Aeff$A_eff, results_Aeff$onset_ratio, 
+     type='l', col='purple', lwd=3,
+     xlab='Effective Threshold Aeff (mg)', 
+     ylab='Onset Ratio (Pill/IV)',
+     main='Relative Onset Speed',
+     cex.lab=1.3, cex.axis=1.2, cex.main=1.4)
+abline(h=1, lty=2, col='gray', lwd=2)
+text(150, 1.1, "Pill slower", cex=1.2)
+text(150, 0.9, "Pill faster", cex=1.2)
+grid()
+
+# Plot 4: Duration Ratio (Pill/IV)
+plot(results_Aeff$A_eff, results_Aeff$duration_ratio, 
+     type='l', col='darkgreen', lwd=3,
+     xlab='Effective Threshold Aeff (mg)', 
+     ylab='Duration Ratio (Pill/IV)',
+     main='Relative Duration',
+     cex.lab=1.3, cex.axis=1.2, cex.main=1.4)
+abline(h=1, lty=2, col='gray', lwd=2)
+text(150, 1.05, "Pill longer", cex=1.2)
+text(150, 0.95, "Pill shorter", cex=1.2)
+grid()
+
+# Close PDF device
+dev.off()
+
+```
+
+```{r}
+# =============================================================================
+# PART 8: VISUALIZATION - MAIN COMPARISON PLOT
+# =============================================================================
+
+# Solve models with base parameters for plotting
+A_IV_base <- solve_IV(t_all, r, h, c)
+A_pill_base <- solve_Pill(t_all, D_max, h, c)
+
+# Create PDF file for comparison plot
+pdf("comparison_plot.pdf", width=10, height=6)
+par(mar=c(5,5,4,2))
+
+plot(t_all, A_IV_base, type='l', col='blue', lwd=3,
+     xlab='Time (hours)', ylab='Drug Amount A(t) (mg)',
+     main='Drug Delivery Method Comparison',
+     ylim=c(0, max(c(A_IV_base, A_pill_base)) * 1.1),
+     cex.lab=1.3, cex.axis=1.2, cex.main=1.4)
+
+lines(t_all, A_pill_base, col='red', lwd=3)
+
+# Add threshold lines
+abline(h=A_eff, lty=2, col='darkgreen', lwd=2)
+abline(h=A_safe, lty=2, col='orange', lwd=2)
+abline(v=h, lty=3, col='gray', lwd=1)
+
+# Add legend
+legend('topright', 
+       c('IV Delivery', 'Pill Delivery', 'Effective Threshold', 
+         'Safety Threshold', 'End of Administration'),
+       col=c('blue', 'red', 'darkgreen', 'orange', 'gray'), 
+       lty=c(1,1,2,2,3), lwd=c(3,3,2,2,1), cex=1.1)
+
+dev.off()
+
+```
+
+```{r}
+# =============================================================================
+# PART 9: CLINICAL SCENARIOS
+# =============================================================================
+
+# Scenario 1: Pain Killer (rapid onset desired)
+r_pain <- 100
+h_pain <- 2
+D_max_pain <- 300
+
+A_IV_pain <- solve_IV(t_all, r_pain, h_pain, c)
+A_pill_pain <- solve_Pill(t_all, D_max_pain, h_pain, c)
+
+# Scenario 2: Allergy Relief (sustained duration desired)
+r_allergy <- 30
+h_allergy <- 8
+D_max_allergy <- 120
+
+A_IV_allergy <- solve_IV(t_all, r_allergy, h_allergy, c)
+A_pill_allergy <- solve_Pill(t_all, D_max_allergy, h_allergy, c)
+
+# Create PDF file for scenario comparison
+pdf("scenario_comparison.pdf", width=12, height=5)
+par(mfrow=c(1,2), mar=c(5,5,4,2))
+
+# Plot Pain Killer Scenario
+plot(t_all, A_IV_pain, type='l', col='blue', lwd=3,
+     xlab='Time (hours)', ylab='Drug Amount A(t) (mg)',
+     main='Pain Killer Scenario (Rapid Onset)',
+     ylim=c(0, max(c(A_IV_pain, A_pill_pain)) * 1.1),
+     cex.lab=1.2, cex.axis=1.1, cex.main=1.3)
+lines(t_all, A_pill_pain, col='red', lwd=3)
+abline(h=A_eff, lty=2, col='darkgreen', lwd=2)
+legend('topright', c('IV', 'Pill', 'Effective Level'),
+       col=c('blue', 'red', 'darkgreen'), lty=c(1,1,2), lwd=c(3,3,2))
+
+# Plot Allergy Relief Scenario
+plot(t_all, A_IV_allergy, type='l', col='blue', lwd=3,
+     xlab='Time (hours)', ylab='Drug Amount A(t) (mg)',
+     main='Allergy Relief Scenario (Sustained Effect)',
+     ylim=c(0, max(c(A_IV_allergy, A_pill_allergy)) * 1.1),
+     cex.lab=1.2, cex.axis=1.1, cex.main=1.3)
+lines(t_all, A_pill_allergy, col='red', lwd=3)
+abline(h=A_eff, lty=2, col='darkgreen', lwd=2)
+legend('topright', c('IV', 'Pill', 'Effective Level'),
+       col=c('blue', 'red', 'darkgreen'), lty=c(1,1,2), lwd=c(3,3,2))
+
+dev.off()
+
+```
+
+```{r}
+# =============================================================================
+# PART 10: PARAMETER SPACE VISUALIZATION
+# =============================================================================
+
+# Create PDF file for parameter space analysis
+pdf("parameter_space_analysis.pdf", width=12, height=10)
+par(mfrow=c(2,2), mar=c(5,5,4,2))
+
+# Plot 1: Effect of h on onset difference
+plot(results_h$h, results_h$onset_diff, type='b', col='blue', lwd=3, pch=19,
+     xlab='Administration Duration h (hours)', 
+     ylab='Onset Difference: Pill - IV (hours)',
+     main='How h Affects Relative Onset Speed',
+     cex.lab=1.3, cex.axis=1.2, cex.main=1.4)
+abline(h=0, lty=2, col='gray', lwd=2)
+grid()
+
+# Plot 2: Effect of h on duration difference
+plot(results_h$h, results_h$duration_diff, type='b', col='red', lwd=3, pch=19,
+     xlab='Administration Duration h (hours)', 
+     ylab='Duration Difference: Pill - IV (hours)',
+     main='How h Affects Relative Duration',
+     cex.lab=1.3, cex.axis=1.2, cex.main=1.4)
+abline(h=0, lty=2, col='gray', lwd=2)
+grid()
+
+# Plot 3: Effect of c on duration for both methods
+plot(results_c$c, results_c$IV_duration, type='l', col='blue', lwd=3,
+     xlab='Clearance Rate c (1/hr)', ylab='Effective Duration (hours)',
+     main='Effect of Clearance on Duration',
+     ylim=c(0, max(c(results_c$IV_duration, results_c$Pill_duration), na.rm=TRUE)),
+     cex.lab=1.3, cex.axis=1.2, cex.main=1.4)
+lines(results_c$c, results_c$Pill_duration, col='red', lwd=3)
+legend('topright', c('IV', 'Pill'), col=c('blue', 'red'), lty=1, lwd=3)
+grid()
+
+# Plot 4: Trade-off score heat map (requires creating matrix)
+h_grid <- seq(2, 10, by=0.5)
+r_grid <- seq(20, 100, by=5)
+trade_off_matrix <- matrix(NA, nrow=length(h_grid), ncol=length(r_grid))
+
+for(i in 1:length(h_grid)) {
+  for(j in 1:length(r_grid)) {
+    A_temp <- solve_IV(t_all, r_grid[j], h_grid[i], c)
+    metrics <- calculate_metrics(t_all, A_temp, A_eff_fixed)
+    # Trade-off score: duration/onset
+    if(!is.na(metrics$onset) && metrics$onset > 0) {
+      trade_off_matrix[i,j] <- metrics$duration / metrics$onset
+    }
+  }
+}
+
+image(r_grid, h_grid, t(trade_off_matrix), 
+      xlab='Infusion Rate r (mg/hr)', ylab='Duration h (hours)',
+      main='IV: Duration/Onset Trade-off Map',
+      col=heat.colors(50), cex.lab=1.3, cex.axis=1.2, cex.main=1.4)
+contour(r_grid, h_grid, t(trade_off_matrix), add=TRUE, labcex=1.2)
+
+dev.off()
+
+```
+
+```{r}
+# =============================================================================
+# PART 11: SUMMARY TABLE
+# =============================================================================
+
+cat("\n", "="*80, "\n")
+cat("SUMMARY COMPARISON TABLE\n")
+cat("="*80, "\n\n")
+
+# Calculate metrics for base parameters
+metrics_IV_base <- calculate_metrics(t_all, A_IV_base, A_eff)
+metrics_pill_base <- calculate_metrics(t_all, A_pill_base, A_eff)
+
+comparison <- data.frame(
+  Metric = c("Peak Concentration (mg)", 
+             "Time to Peak (hours)",
+             "Time to Effective Level (hours)",
+             "Effective Duration (hours)",
+             "Exceeds Safety Threshold?"),
+  IV_Delivery = c(round(metrics_IV_base$peak_value, 2),
+                  round(metrics_IV_base$peak_time, 2),
+                  round(metrics_IV_base$onset, 2),
+                  round(metrics_IV_base$duration, 2),
+                  ifelse(metrics_IV_base$peak_value > A_safe, "YES", "NO")),
+  Pill_Delivery = c(round(metrics_pill_base$peak_value, 2),
+                    round(metrics_pill_base$peak_time, 2),
+                    round(metrics_pill_base$onset, 2),
+                    round(metrics_pill_base$duration, 2),
+                    ifelse(metrics_pill_base$peak_value > A_safe, "YES", "NO"))
+)
+
+print(comparison)
+
+cat("\n", "="*80, "\n")
+cat("CLINICAL RECOMMENDATIONS\n")
+cat("="*80, "\n\n")
+cat("1. For acute conditions: IV delivery preferred (faster onset)\n")
+cat("2. For chronic conditions: Pill delivery better (sustained levels)\n")
+cat("3. For safety-critical drugs: Pill has lower peak concentration\n")
+cat("4. For predictable timing: IV has more predictable peak\n\n")
+
+cat("Analysis complete. All plots saved as PDF files.\n")
+
+```

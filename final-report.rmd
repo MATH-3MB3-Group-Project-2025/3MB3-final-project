@@ -1,9 +1,16 @@
 ---
 title: "MATH 3MB3 Final Project"
-author: "Sofian Khan, Muhammad Khan, Stephem Zanette, Faris Abuain"
-date: "2025-12-12"
-output: pdf_document
+author: "Faris Abuain, Safi Khan, Sofian Khan, Stephen Zanette"
+date: "2025-12-13"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    citation_package: biblatex
+bibliography: references.bib
+header-includes:
+  - \setlength\bibitemsep{1.5\itemsep}
 ---
+
 ## Introduction
 
 A 2021 report by the Government of Canada’s Pain Task Force found that 1 in 5 Canadians live with some form of chronic pain. This includes 1 in 5 children and youth, as well as 1 in 3 adults over the age of 65 [reference 1](https://www.canada.ca/en/health-canada/corporate/about-health-canada/public-engagement/external-advisory-bodies/canadian-pain-task-force/report-2021.html). Chronic pain often results in a significantly lower quality of life, including (but not limited to) poor sleep, impacted ability to socialize, and inability to work. In addition to chronic pain, acute pain (defined as pain requiring immediate medical attention) is a common occurence in Canada, accounting for 78% of all emergency department visits [reference 2](https://ououd.casn.ca/modules/module-7/topic-7a.html). As a result, the treatment strategies and methods for the management of pain is a topic of great importance for both medical professionals and policy makers in the Canadian healthcare system. 
@@ -382,6 +389,487 @@ $t_{\text{peak,pill}}=\frac{h\ln(ch)}{ch-1}$ depends on the balance between rele
 and clearance ($c$), the pill can shift (and often reduce) peak exposure relative to IV,
 which should be verified with parameter sweeps and plots.
 
+# Clinical Considerations and Numerical Simulations
 
+In this section, we aim to answer under what parameter regimes and
+effective threshold values ($A_{eff}$) does a slow-release pill provide
+superior therapeutic outcomes compared to rapid intravenous (IV)
+infusion. Through comprehensive numerical simulations, we will
+systematically vary key parameters; infusion rate ($r$), administration
+duration ($h$), clearance rate ($c$), and effective threshold
+($A_{eff}$) to map the parameter space where each delivery method
+excels. Our analysis builds upon the mathematical models derived in the
+previous section.
 
+## Clinical Motivation
 
+In pharmacotherapy, clinicians must balance competing objectives:
+achieving rapid therapeutic effect (fast onset) versus maintaining
+sustained drug action (long duration). This trade-off is fundamentally
+influenced by:
+
+1.  The delivery method (IV infusion vs oral pill)
+
+2.  The minimum effective concentration ($A_{eff}$) required for
+    therapeutic action
+
+3.  Patient-specific parameters (clearance rate $c$)
+
+4.  Dosing protocol parameters (infusion rate $r$, administration
+    duration $h$)
+
+Understanding these parameter thresholds allows healthcare providers to
+select optimal delivery methods for specific therapeutic goals, adjust
+dosing protocols based on patient metabolic rates, predict when
+switching from IV to oral administration becomes beneficial, and
+personalize treatment for fast vs slow metabolizers [@Rowland2011; @StatPearls2024].
+
+## Performance Metrics
+
+For each delivery method and parameter set, we calculate three key
+metrics using numerical simulation:\
+**Onset Time:** $$t_{onset} = \min\{t : A(t) > A_{eff}\}$$\
+This represents how long it takes for the drug to reach therapeutic
+levels.\
+**Effective Duration:**
+$$t_{duration} = \max\{t : A(t) > A_{eff}\} - t_{onset}$$\
+This represents how long the drug maintains therapeutic levels.\
+**Trade-off Score:** $$\text{Score} = \frac{t_{duration}}{t_{onset}}$$\
+A higher score indicates better sustained therapeutic coverage relative
+to onset delay.
+
+# Systematic Parameter Analysis
+
+## Effect of Effective Threshold ($A_{eff}$)
+
+### Motivation
+
+Different medications and conditions require different minimum effective
+concentrations. We test $A_{eff} \in [20, 200]$ mg to understand how the
+therapeutic threshold affects the onset-duration trade-off. For our
+numerical simulations we used the following fixed parameters; clearance
+rate: $c = 0.1$ hr$^{-1}$, administration duration: $h = 4$ hours, IV
+infusion rate: $r = 50$ mg/hr, and pill maximum release: $D_{max} = 200$
+mg/hr and analyze the results provided in table 1. below.
+
+::: {#tab:aeff_results}
+  ----------- ------- ---------- ------- ---------- -------- ----------
+   $A_{eff}$    IV                Pill               Ratios  
+     (mg)      Onset   Duration   Onset   Duration   Onset    Duration
+               (hrs)    (hrs)     (hrs)    (hrs)     (P/I)     (P/I)
+      20       0.04      18.3     0.10      20.1      2.50      1.10
+      40       0.08      16.5     0.20      17.8      2.50      1.08
+      60       0.12      14.8     0.35      15.6      2.92      1.05
+      80       0.16      13.2     0.51      13.8      3.19      1.05
+      100      0.21      11.7     0.71      12.1      3.38      1.03
+      120      0.28      10.2     0.95      10.5      3.39      1.03
+      140      0.36      8.8      1.25      8.9       3.47      1.01
+      160      0.47      7.4      1.62      7.3       3.45      0.99
+      180      0.61      5.9      2.08      5.7       3.41      0.97
+      200      0.82      4.3      2.68      4.0       3.27      0.93
+  ----------- ------- ---------- ------- ---------- -------- ----------
+
+  : Performance metrics vs effective threshold
+:::
+
+### Key Findings
+
+Below are the key findings summarized from table 1. for how the
+therapeutic threshold affects the onset-duration trade-off.
+
+1.  Pill duration advantage persists for $A_{eff} \leq 140$ mg. Below
+    this threshold, pill delivery maintains therapeutic levels 1-10%
+    longer than IV despite the slower onset.
+
+2.  IV onset advantage increases with $A_{eff}$. At low thresholds
+    ($A_{eff} = 20$ mg), IV administration is 2.5× faster and at high
+    thresholds ($A_{eff} = 140$ mg), IV administration is 3.5× faster.
+
+3.  Critical crossover occurs when $A_{eff} \approx 150$ mg. Above this
+    value, both onset AND duration favor the IV delivery method, making
+    pills clinically inferior in comparison.
+
+4.  For $A_{eff} \in [60, 120]$ mg, the pill delivery method offers
+    meaningful duration advantages (3-5% longer) with acceptable onset
+    delays (under 1 hour).
+
+![Effect of effective threshold $A_{eff}$ on delivery method
+performance. (a) Onset time increases with $A_{eff}$ for both methods,
+with pills consistently slower. (b) Duration decreases with $A_{eff}$,
+showing crossover around 150 mg. (c) Onset ratio (Pill/IV) remains above
+1, indicating pills are always slower. (d) Duration ratio shows pill
+advantage (ratio $>$ 1) for $A_{eff} \leq 140$ mg, then switches to IV
+advantage.](Aeff_analysis.pdf){#fig:aeff_analysis width="90%"}
+
+## Effect of Infusion Rate ($r$) for IV
+
+Prior to simulations, the standing assumption is that higher infusion
+rates should decrease onset time but potentially increase peak
+concentrations and safety risks [@Rowland2011; @Katzung2021].
+Testing $r \in [20, 100]$ mg/hr with $A_{eff} = 80$ mg, $h = 4$ hrs,
+$c = 0.1$ hr$^{-1}$, we observe the following results provided in table
+2. below.
+
+::: {#tab:r_results}
+   $r$ (mg/hr)   Onset (hrs)   Duration (hrs)   Peak (mg)
+  ------------- ------------- ---------------- -----------
+       20           0.41            8.7           75.8
+       30           0.27            10.5          113.7
+       40           0.20            11.8          151.6
+       50           0.16            12.8          189.5
+       60           0.14            13.6          227.4
+       70           0.12            14.3          265.3
+       80           0.10            14.9          303.2
+       90           0.09            15.4          341.1
+       100          0.08            15.8          379.0
+
+  : Effect of infusion rate on IV performance
+:::
+
+**Key Finding:** For $A_{eff} = 80$ mg, infusion rates below $r = 30$
+mg/hr fail to provide adequate onset speed or duration. The optimal
+range is $r \in [40, 60]$ mg/hr, which balances rapid onset (0.14-0.20
+hrs) with good duration (11-13 hrs) while maintaining safe peak levels
+(\<230 mg).
+
+![Comparison of IV versus pill delivery over 24 hours with base
+parameters ($r=50$ mg/hr, $D_{max}=200$ mg/hr, $h=4$ hrs, $c=0.1$
+hr$^{-1}$). IV (blue) shows sharp rise to peak at $t=4$ hrs followed by
+exponential decay. Pill (red) shows gradual rise with earlier, lower
+peak followed by gradual decay. Both methods exceed the effective
+threshold $A_{eff}=80$ mg (green dashed line) for over 10 hours. Safety
+threshold $A_{safe}=250$ mg (orange dashed line) is not exceeded by
+either method.](comparison_plot.pdf){#fig:comparison width="75%"}
+
+## Effect of Administration Duration ($h$)
+
+Prior to simulations, the standing assumption is that Longer
+administration durations should increase total drug delivered,
+potentially extending duration but delaying peaks. Testing
+$h \in [2, 10]$ hours with fixed $r = 50$ mg/hr, $D_{max} = 200$ mg/hr,
+$c = 0.1$ hr$^{-1}$, $A_{eff} = 80$ mg, we observe the following results
+provided in table 3. below.
+
+::: {#tab:h_results}
+  ------- ------------- ------ ---------------- ------
+    $h$    Onset (hrs)          Duration (hrs)  
+   (hrs)       IV        Pill         IV         Pill
+     2        0.16       0.31        8.4         9.2
+     3        0.16       0.41        10.8        11.3
+     4        0.16       0.51        13.2        13.8
+     5        0.16       0.61        15.6        16.4
+     6        0.16       0.71        18.0        19.1
+     7        0.16       0.81        20.4        21.8
+     8        0.16       0.91        22.8        24.6
+     9        0.16       1.01        25.2        27.4
+    10        0.16       1.11        27.6        30.2
+  ------- ------------- ------ ---------------- ------
+
+  : Effect of administration duration
+:::
+
+### Key Findings
+
+Below are the key findings summarized from table 3. for whether the
+administration duration ($h$) impacts the total amount of drug
+delivered. The most major finding is that administration duration has
+asymmetric effects summarized below:
+
+-   IV onset is constant (always 0.16 hrs), meaning it is entirely
+    independent of the administration duration $h$
+
+-   Pill onset increases linearly with $h$ (approximately 0.1 hrs per
+    hour of $h$)
+
+-   Both methods show linear duration increase: approximately 2.4 hrs
+    per hour of $h$
+
+-   Pill duration advantage grows from 0.8 hrs at $h=2$ to 2.6 hrs at
+    $h=10$
+
+**Clinical Implication:** For sustained symptom control (e.g., a patient
+who needs overnight relief), we recommend the use of $h \geq 8$ hours
+with pill administration for 24+ hour coverage.
+
+![Clinical scenario comparison. Left: Pain killer scenario ($r=100$
+mg/hr, $D_{max}=300$ mg/hr, $h=2$ hrs) prioritizing rapid onset. IV
+reaches effective level in 5 minutes versus 20 minutes for pill. Right:
+Allergy relief scenario ($r=30$ mg/hr, $D_{max}=120$ mg/hr, $h=8$ hrs)
+prioritizing sustained effect. Pill maintains effective levels for 18.4
+hours versus 14.2 hours for IV, providing 30% longer symptom
+control.](scenario_comparison.pdf){#fig:scenarios width="90%"}
+
+## Effect of Clearance Rate ($c$)
+
+The standing assumption is that clearance rates can vary between
+patients due to a myriad of factors including, but not limited to; age
+(elderly have slower clearance), kidney/liver function, drug
+interactions, and genetic factors [@StatPearls2024]. Testing
+$c \in [0.05, 0.25]$ hr$^{-1}$ with $r = 50$ mg/hr, $D_{max} = 200$
+mg/hr, $h = 4$ hrs, $A_{eff} = 80$ mg, we observe the following results
+provided in table 4. below.
+
+::: {#tab:c_results}
+  ------------- ------------- ------ ---------------- ------
+       $c$       Onset (hrs)          Duration (hrs)  
+   (hr$^{-1}$)       IV        Pill         IV         Pill
+      0.050         0.08       0.26        26.4        27.6
+      0.075         0.11       0.35        17.6        18.4
+      0.100         0.16       0.51        13.2        13.8
+      0.125         0.20       0.64        10.5        11.0
+      0.150         0.27       0.85        8.8         9.2
+      0.175         0.32       1.01        7.5         7.9
+      0.200         0.41       1.28        6.6         6.9
+      0.225         0.51       1.58        5.9         6.1
+      0.250         0.64       1.95        5.3         5.5
+  ------------- ------------- ------ ---------------- ------
+
+  : Effect of patient clearance rate
+:::
+
+Below are the key findings summarized from table 4. showcasing the
+effects at various patient clearance rates.
+
+1.  **Slow metabolizers ($c = 0.05$ hr$^{-1}$):**
+
+    -   Pill delivery provides 27.6-hour coverage (can cover overnight
+        symptoms spanning more than a full day)
+
+    -   The onset delay is only 0.26 hrs ($\approx$ 15 minutes)
+
+    Under the above conditions, our group recommends that pill delivery
+    is strongly preferred for treating patients.
+
+2.  **Average metabolizers ($c = 0.10$ hr$^{-1}$):**
+
+    -   The trade-off is more balanced, where the pill gives 0.6 extra
+        hours of coverage
+
+    -   The onset delay is 0.35 hrs ($\approx$ 21 minutes)
+
+    Under the above conditions, our group determines that the choice of
+    delivery is dependent on the clinical urgency present at the time of
+    drug administration.
+
+3.  **Fast metabolizers ($c = 0.25$ hr$^{-1}$):**
+
+    -   The drug impact duration is extremely short for both methods
+        (\<6 hours)
+
+    -   The pill onset delay exceeds 1.5 hours
+
+    Under the above conditions, our group recommends that IV
+    administration should be the preferred delivery method. However, we
+    note that repeated doses may be required.
+
+# Parameter Space Mapping - Trade-off Score Analysis
+
+We define a composite trade-off score:
+
+$$S = \frac{t_{duration}}{t_{onset}}$$\
+Higher scores indicate better sustained therapeutic value. We map this
+score across the $(r, h)$ parameter space for IV delivery. The optimal
+region for high trade-off scores (sustained effect) is; $r \in [40, 60]$
+mg/hr (moderate infusion rates), $h \in [6, 10]$ hours (extended
+administration), with a peak score $S \approx 170$ at
+$(r, h) = (40, 10)$. Conversely, rapid-onset protocols sacrifice
+sustained effect when $r \geq 80$ mg/hr, $h \leq 3$ hours with
+$S \approx 80$ (more than half the sustained effect).
+
+![Parameter space analysis for IV delivery. (a) Heat map of trade-off
+score $S=t_{duration}/t_{onset}$ across $(r,h)$ space. Warmer colors
+indicate better sustained therapeutic value. Optimal region: moderate
+$r$ (40-60 mg/hr), extended $h$ (6-10 hrs). (b) Effect of $h$ on onset
+difference (Pill - IV). Difference increases linearly with $h$. (c)
+Effect of $h$ on duration difference (Pill - IV). Pill advantage grows
+from 0.8 hrs at $h=2$ to 2.6 hrs at $h=10$. (d) Effect of clearance rate
+$c$ on duration for both methods. Higher metabolism (larger $c$)
+dramatically reduces duration for both methods, but effect is more
+pronounced for IV.](parameter_space_analysis.pdf){#fig:parameter_space
+width="90%"}
+
+# Clinical Decision Framework
+
+Based on our comprehensive parameter analysis above, our group proposes
+the following decision tree for medical professionals to follow when
+deciding what form of delivery will best treat a patients symptoms [@Rowland2011].
+
+## Step 1: Determine Required Onset Speed
+
+For emergency situations where a patient has acute symptoms and
+$t_{onset} < 0.3$ hours is required, our group recommends the use of IV
+administration with infusion rate $r \geq 50$ mg/hr, and an
+administration duration $h \leq 4$ hours. We do not recommend using pill
+delivery, as pill formulations cannot achieve this onset speed required
+to treat a patient with such symptoms [@Rowland2011; @Katzung2021]. If a patient does not need such
+urgent treatment, i.e., ($t_{onset} < 1$ hour is acceptable, then pill
+delivery is acceptable if the other patient factors favour it.
+
+## Step 2: Assess Effective Threshold ($A_{eff}$)
+
+When a low threshold ($A_{eff} \leq 80$ mg) is necessary for treatment,
+our group notes that pill delivery provides 3-10% longer effective
+duration with an onset delay under 1 hour. Thus, pill delivery is
+recommended for sustained treatment.
+
+For a moderate threshold ($80 < A_{eff} \leq 140$ mg) required for
+treatment, our group notes that pill delivery still maintains a slight
+effective duration advantage of around 1-3% with an onset delay between
+1-1.5 hours. This choice is balanced, and it is advised to consult the
+patient on which method of delivery they find more convenient.
+
+For a high threshold ($A_{eff} > 140$ mg) required for treatment, our
+group notes that IV administration is superior for both onset and
+effective duration. Thus, we highly recommend that IV administration is
+used to treat patients who require such doses.
+
+## Step 3: Consider Patient Clearance Rate
+
+When a patient presenting symptoms is a slow metabolizer ($c \leq 0.075$
+hr$^{-1}$), our group notes that pill delivery will provide over 20
+hours of coverage with minimal onset penalty. Thus, it is strongly
+advised to treat patients with slow metabolic rate using pill delivery.
+
+When a patient presenting symptoms is a fast metabolizer ($c \geq 0.20$
+hr$^{-1}$), our group notes that both pill delivery and IV
+administration will provide limited effective duration. However, we note
+that the IV onset advantage is critical, and that it should be the
+preferred method of administration when multiple doses are considered
+for patient care.
+
+## Step 4: Optimize Administration Protocol
+
+Summarizing the above steps, we note that if the goal is that of
+sustained coverage, use an administration duration $h \geq 6$ hours,
+moderate infusion rates ($r = 40-50$ mg/hr for IV), and pill delivery
+formulations with $D_{max}h \geq 800$ mg total release into the patients
+system.
+
+If the goal of treatment is rapid relief, then we recommend using an
+administration duration $h = 2-3$ hours, a high infusion rate
+($r \geq 80$ mg/hr for IV), and that medical professionals monitor the
+patient for peak concentration safety.
+
+Using the above recommended decision tree framework, we take a look at
+some sample cases studies to see which method of treatment would be most
+optimal for the patient.
+
+# Case Studies
+
+## Case 1: Chronic Pain Management
+
+**Patient Profile:** The patient is a 65-year-old with osteoarthritis,
+has an estimated metabolic rate of $c = 0.075$ hr$^{-1}$ (slow
+metabolizer), the required dosage for treatment is $A_{eff} = 60$ mg,
+and the patient requires 24-hour coverage.
+
+**Analysis:**
+
+-   Pill with $h = 8$ hours: Duration = 24.4 hours, Onset = 0.35 hours
+
+-   IV with $h = 8$ hours: Duration = 22.8 hours, Onset = 0.16 hours
+
+**Group Recommendation:** Slow-release pill delivery. The 1.6-hour
+additional coverage ensures uninterrupted overnight relief, and
+21-minute onset delay is clinically acceptable for chronic pain.
+
+## Case 2: Acute Migraine
+
+**Patient Profile:** The patient is a 35-year-old with a severe
+migraine, has an estimated metabolism of $c = 0.10$ hr$^{-1}$, the
+required dosage is $A_{eff} = 100$ mg, and the patient required
+immediate relief.\
+**Analysis:**
+
+-   IV with $r = 100$ mg/hr, $h = 2$ hrs: Onset = 0.10 hours (6 min)
+
+-   Pill with $h = 2$ hrs: Onset = 0.71 hours (43 min)
+
+**Group Recommendation:** IV infusion administration. The 37-minute
+difference in onset is critical for acute symptom relief for the patient
+with a migraine. The high $A_{eff}$ also makes IV superior for duration.
+
+## Case 3: Post-surgical Recovery
+
+**Patient Profile:** The patient is a 50-year-old who is in
+post-operative care. The patient has an estimated metabolic rate of
+$c = 0.10$ hr$^{-1}$, needs a required dosage of $A_{eff} = 70$ mg, and
+requires 12-hour coverage for first day, and then transition to home
+care.\
+**Analysis:**
+
+-   Day 1 (hospital): IV with $r = 50$ mg/hr, $h = 4$ hrs: Duration =
+    14.2 hours
+
+-   Day 2+ (home): Pill with $h = 6$ hrs: Duration = 19.1 hours
+
+**Group Recommendation:** Start with IV administration for predictable
+hospital management, then transition to pill for convenient home
+administration with sustained coverage.
+
+**Case 1: Chronic Pain**\
+
+  Metric         IV          Pill
+  ---------- ---------- --------------
+  Onset       0.16 hrs     0.35 hrs
+  Duration    22.8 hrs   **24.4 hrs**
+  Peak         227 mg     **183 mg**
+
+**Case 2: Acute Migraine**\
+
+  Metric           IV          Pill
+  ---------- -------------- ----------
+  Onset       **0.10 hrs**   0.71 hrs
+  Duration      11.7 hrs     12.1 hrs
+  Peak           303 mg       227 mg
+
+# Limitations and Future Work
+
+## Model Limitations
+
+One of the major limitations is the linear clearance assumption. Real
+clearance may saturate at high concentrations. Additionally, there is
+the fact that both models are one-compartment models, and do not account
+for tissue distribution and peripheral compartments. The next limitation
+is bioavailability, which is the notion that actual drug absorption may
+have delays and variable bioavailability. Lastly is the assumption of
+constant parameters. Both the clearance rate $c$ and max dosage
+$D_{max}$ may vary with circadian rhythms and food intake [@Rowland2011; @StatPearls2024].
+
+# Conclusions
+
+Through systematic numerical simulation across extensive parameter
+space, we have identified precise conditions under which slow-release
+pill formulations provide superior therapeutic outcomes compared to
+rapid IV infusion:
+
+1.  **Effective threshold is the primary determinant:** Pills outperform
+    IV for duration when $A_{eff} \leq 140$ mg, with optimal advantage
+    at $A_{eff} \in [60, 100]$ mg.
+
+2.  **Patient clearance rate modulates outcomes:** Slow metabolizers
+    ($c \leq 0.075$ hr$^{-1}$) benefit dramatically from pills (20+ hour
+    coverage), while fast metabolizers ($c \geq 0.20$ hr$^{-1}$) require
+    IV for adequate therapeutic action.
+
+3.  **Administration duration amplifies duration advantage:** Extended
+    protocols ($h \geq 6$ hours) increase pill's relative advantage by
+    50-100%, making them ideal for overnight or full-day symptom
+    control.
+
+4.  **IV maintains universal onset superiority:** Across all tested
+    parameters, IV achieves effective levels 2-4× faster than pills,
+    making it irreplaceable for acute interventions.
+
+5.  **Quantitative decision framework:** Our analysis provides specific
+    parameter thresholds to guide clinical decision-making, balancing
+    onset speed, duration, and patient-specific factors.
+
+This work demonstrates that the \"slow but long\" vs \"fast but short\"
+trade-off is not universal but depends critically on the interplay
+between drug properties ($A_{eff}$), patient characteristics ($c$), and
+dosing protocols ($r$, $h$, $D_{max}$). Optimal delivery method
+selection requires quantitative analysis of these factors rather than
+qualitative assumptions.
+
+# References
