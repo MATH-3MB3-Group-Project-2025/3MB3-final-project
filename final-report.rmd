@@ -213,39 +213,175 @@ $$g'(A) = -c < 0.$$
 So, as before, this equilibrium is stable and we can expect to reach it once administration stops, given sufficient time.
 
 
-# Pill Model
+\section{Pill model with exponential release}
 
-So, as before, this equilibrium is stable and we can expect to reach it once administration stops, given sufficient time.
+\subsection{Model derivation}
+Let $A(t)$ denote the amount of drug in the body (mg) at time $t$ (hours).  
+Assume linear clearance $P(A)=cA$ with clearance rate $c>0$ (1/hour), and a slowly dissolving pill whose release rate decays exponentially:
+\[
+D_{\text{pill}}(t)=D_{\max}e^{-t/h},
+\]
+where $D_{\max}>0$ is the initial release rate (mg/hour) and $h>0$ is a characteristic release time (hours).
 
-The clearance rate is denoted by $c$, and the pill release rate is $D_{\max}$.
-
-We consider the pill model
+Using the inflow-minus-outflow principle,
 \[
-\frac{dA}{dt} = D_{\max} e^{-t/h} - cA(t),
-\]
-with solution
-\[
-A(t) = \frac{D_{\max}}{c - 1/h}\left(e^{-t/h} - e^{-ct}\right).
+\frac{dA}{dt}=D_{\text{pill}}(t)-P(A)=D_{\max}e^{-t/h}-cA,
+\qquad A(0)=0.
 \]
 
-Over the interval $[0,h]$ the total dosage is
+\subsection{Analytical solution for $A(t)$}
+This is a linear first-order ODE:
 \[
-D_{\text{tot,pill}}(0,h)
-= \int_0^h D_{\max} e^{-t/h}\,dt
-= D_{\max} h (1 - e^{-1}).
+A'(t)+cA(t)=D_{\max}e^{-t/h}.
 \]
-For the intravenous model we have
+Use integrating factor $\mu(t)=e^{ct}$. Then
 \[
-\frac{dA}{dt} = r - cA(t), \quad 0 \le t \le h,
+\frac{d}{dt}\!\left(e^{ct}A(t)\right)=D_{\max}e^{ct}e^{-t/h}
+= D_{\max}e^{(c-\frac{1}{h})t}.
 \]
-with solution
+
+\paragraph{Case 1: $c\neq \frac{1}{h}$.}
+Integrate from $0$ to $t$:
 \[
-A_{\text{IV}}(t) = \frac{r}{c}\bigl(1 - e^{-ct}\bigr),
+e^{ct}A(t)-A(0)=D_{\max}\int_0^t e^{(c-\frac{1}{h})s}\,ds
+= D_{\max}\,\frac{e^{(c-\frac{1}{h})t}-1}{c-\frac{1}{h}}.
 \]
-and total dose
+With $A(0)=0$, multiply by $e^{-ct}$:
 \[
-D_{\text{tot,IV}} = rh.
+A(t)=\frac{D_{\max}}{c-\frac{1}{h}}\left(e^{-t/h}-e^{-ct}\right),
+\qquad (c\neq 1/h).
 \]
+
+\paragraph{Case 2: $c=\frac{1}{h}$.}
+Then
+\[
+\frac{d}{dt}\!\left(e^{ct}A(t)\right)=D_{\max},
+\]
+so
+\[
+e^{ct}A(t)=D_{\max}t
+\quad\Rightarrow\quad
+A(t)=D_{\max}t\,e^{-ct},\qquad (c=1/h).
+\]
+
+\subsection{Total dosage for the pill model}
+Define total administered amount over an administration window $[0,h]$:
+\[
+D_{\text{tot,pill}}=\int_0^h D_{\max}e^{-t/h}\,dt
+= D_{\max}\left[-h e^{-t/h}\right]_{0}^{h}
+= D_{\max}h\left(1-e^{-1}\right).
+\]
+(If instead you treat the pill as releasing indefinitely, then
+$\int_0^\infty D_{\max}e^{-t/h}dt=D_{\max}h$.)
+
+\section{Comparison: IV infusion vs pill delivery (Factors 1 and 2)}
+
+\subsection{IV reference model}
+For constant IV infusion at rate $r$ (mg/hour) for $0\le t\le h$ and $0$ thereafter:
+\[
+D_{\text{IV}}(t)=
+\begin{cases}
+r, & 0\le t\le h,\\
+0, & t>h,
+\end{cases}
+\qquad P(A)=cA,\qquad A(0)=0.
+\]
+The solution is
+\[
+A_{\text{IV}}(t)=
+\begin{cases}
+\dfrac{r}{c}\left(1-e^{-ct}\right), & 0\le t\le h,\\[8pt]
+\dfrac{r}{c}\left(1-e^{-ch}\right)e^{-c(t-h)}, & t>h.
+\end{cases}
+\]
+
+\subsection{Factor 1: Total administrative amount}
+\paragraph{IV (over $[0,h]$):}
+\[
+D_{\text{tot,IV}}=\int_0^h r\,dt=rh.
+\]
+
+\paragraph{Pill (over $[0,h]$):}
+\[
+D_{\text{tot,pill}}=\int_0^h D_{\max}e^{-t/h}\,dt
+= D_{\max}h\left(1-e^{-1}\right).
+\]
+
+\paragraph{Dose-matching for a fair comparison (common choice).}
+If we want both methods to deliver the same total dose over $[0,h]$, set
+\[
+D_{\text{tot,IV}}=D_{\text{tot,pill}}
+\quad\Longrightarrow\quad
+rh=D_{\max}h(1-e^{-1})
+\quad\Longrightarrow\quad
+D_{\max}=\frac{r}{1-e^{-1}}.
+\]
+
+\subsection{Factor 2: Overdose risk (peak $A(t)$ values)}
+
+\paragraph{IV peak.}
+On $[0,h]$, $A_{\text{IV}}(t)$ increases monotonically; after $h$ it decays.
+Thus the peak occurs at $t=h$:
+\[
+A_{\text{peak,IV}}=A_{\text{IV}}(h)=\frac{r}{c}\left(1-e^{-ch}\right),
+\qquad t_{\text{peak,IV}}=h.
+\]
+
+\paragraph{Pill peak (general method).}
+For the pill model, the peak occurs when $A'(t)=0$:
+\[
+0=A'(t)=D_{\max}e^{-t/h}-cA(t)
+\quad\Longrightarrow\quad
+A_{\text{peak,pill}}=\frac{D_{\max}}{c}e^{-t_{\text{peak}}/h}.
+\]
+Using the explicit $A(t)$ (for $c\neq 1/h$),
+\[
+A(t)=\frac{D_{\max}}{c-\frac{1}{h}}\left(e^{-t/h}-e^{-ct}\right),
+\]
+set $A'(t)=0$ and solve:
+\[
+D_{\max}e^{-t/h}=c\cdot \frac{D_{\max}}{c-\frac{1}{h}}
+\left(e^{-t/h}-e^{-ct}\right).
+\]
+Cancel $D_{\max}$ and rearrange:
+\[
+e^{-ct}=\frac{1}{ch}\,e^{-t/h}.
+\]
+Taking logs gives the pill time-to-peak:
+\[
+t_{\text{peak,pill}}=\frac{\ln(ch)}{c-\frac{1}{h}}
+=\frac{h\ln(ch)}{ch-1},
+\qquad (c\neq 1/h).
+\]
+Then the pill peak value can be written compactly as
+\[
+A_{\text{peak,pill}}=\frac{D_{\max}}{c}\exp\!\left(-\frac{t_{\text{peak,pill}}}{h}\right)
+=\frac{D_{\max}}{c}\exp\!\left(-\frac{\ln(ch)}{ch-1}\right),
+\qquad (c\neq 1/h).
+\]
+
+\paragraph{Special case $c=1/h$.}
+Here $A(t)=D_{\max}t e^{-ct}$. Differentiate:
+\[
+A'(t)=D_{\max}e^{-ct}(1-ct)=0 \;\Longrightarrow\; t_{\text{peak,pill}}=\frac{1}{c}=h,
+\]
+and thus
+\[
+A_{\text{peak,pill}}=D_{\max}h e^{-1}.
+\]
+
+\paragraph{Overdose-risk statement.}
+Given a safety threshold $A_{\text{safe}}$, overdose risk can be assessed by checking whether
+\[
+A_{\text{peak,IV}}>A_{\text{safe}}
+\quad\text{or}\quad
+A_{\text{peak,pill}}>A_{\text{safe}}.
+\]
+Because IV has an easily characterized peak at $t=h$, while the pill peak time
+$t_{\text{peak,pill}}=\frac{h\ln(ch)}{ch-1}$ depends on the balance between release ($h$)
+and clearance ($c$), the pill can shift (and often reduce) peak exposure relative to IV,
+which should be verified with parameter sweeps and plots.
+
 
 
 
